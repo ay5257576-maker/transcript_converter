@@ -10,9 +10,45 @@ app.secret_key = "my-super-secret-key-9f3k2j8h"   # needed for flash messages
 
 ALLOWED_EXTENSIONS = {"txt"}
 
+# Matches timestamps in (MM:SS) or (M:SS) format
+TIME_REGEX = re.compile(r'\((\d{1,2}):(\d{2})\)')
+
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def to_seconds(mm, ss):
+    return int(mm) * 60 + int(ss)
+
+
+def from_seconds(total_seconds):
+    mm = total_seconds // 60
+    ss = total_seconds % 60
+    return f"({mm:02d}:{ss:02d})"
+
+
+def extract_times(text):
+    return [to_seconds(mm, ss) for mm, ss in TIME_REGEX.findall(text)]
+
+
+def merge_transcripts(part1: str, part2: str) -> str:
+    """
+    Merge two transcript parts.
+    All timestamps in Part 2 are shifted by the last timestamp of Part 1.
+    """
+    part1_times = extract_times(part1)
+    offset = max(part1_times) if part1_times else 0
+
+    def shift_timestamp(match):
+        mm, ss = match.groups()
+        original_seconds = to_seconds(mm, ss)
+        new_seconds = original_seconds + offset
+        return from_seconds(new_seconds)
+
+    shifted_part2 = TIME_REGEX.sub(shift_timestamp, part2)
+    merged_text = part1.rstrip() + "\n" + shifted_part2
+    return merged_text
 
 
 def format_timestamp(ts):
@@ -108,6 +144,50 @@ def index():
         )
 
     return render_template("index.html")
+
+
+@app.route("/merge", methods=["POST"])
+def merge():
+    """Merge two transcript parts and return a .txt file."""
+    if "part1" not in request.files or "part2" not in request.files:
+        flash("Both Part 1 and Part 2 files are required")
+        return redirect(url_for("index"))
+
+    part1_file = request.files["part1"]
+    part2_file = request.files["part2"]
+
+    if part1_file.filename == "" or part2_file.filename == "":
+        flash("Please select both files")
+        return redirect(url_for("index"))
+
+    if not (allowed_file(part1_file.filename) and allowed_file(part2_file.filename)):
+        flash("Only .txt files are allowed")
+        return redirect(url_for("index"))
+
+    try:
+        part1 = part1_file.read().decode("utf-8")
+        part2 = part2_file.read().decode("utf-8")
+    except Exception:
+        flash("Could not read the uploaded files. Make sure they are valid UTF-8 text.")
+        return redirect(url_for("index"))
+
+    if not part1.strip() or not part2.strip():
+        flash("One or both files are empty")
+        return redirect(url_for("index"))
+
+    merged_text = merge_transcripts(part1, part2)
+
+    # Write to a temporary .txt file and send it
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8") as tmp:
+        tmp.write(merged_text)
+        tmp_path = tmp.name
+
+    return send_file(
+        tmp_path,
+        as_attachment=True,
+        download_name="merged_transcript.txt",
+        mimetype="text/plain",
+    )
 
 
 if __name__ == "__main__":
