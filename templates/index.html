@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transcript → DOCX Converter</title>
+    <title>Transcript Tools</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -22,45 +22,54 @@
             color: var(--text);
             min-height: 100vh;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 1.5rem;
+            padding: 2rem 1.5rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
         .card {
             background: var(--card);
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            padding: 2.5rem;
-            width: 100%;
-            max-width: 480px;
+            padding: 2rem;
         }
         h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+            font-size: 1.4rem;
+            margin-bottom: 0.35rem;
+        }
+        h2 {
+            font-size: 1.15rem;
+            margin-bottom: 0.35rem;
         }
         p.subtitle {
             color: var(--muted);
-            font-size: 0.95rem;
-            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
         }
         label {
             display: block;
             font-weight: 500;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.35rem;
             font-size: 0.9rem;
         }
         input[type="text"],
         input[type="file"] {
             width: 100%;
-            padding: 0.7rem 0.9rem;
+            padding: 0.65rem 0.85rem;
             border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 0.95rem;
-            margin-bottom: 1.4rem;
+            margin-bottom: 1.2rem;
             background: #fff;
         }
         input[type="file"] {
-            padding: 0.6rem;
+            padding: 0.55rem;
         }
         input:focus {
             outline: none;
@@ -69,12 +78,12 @@
         }
         button {
             width: 100%;
-            padding: 0.85rem;
+            padding: 0.8rem;
             background: var(--primary);
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.15s;
@@ -86,24 +95,29 @@
             background: #fef2f2;
             color: var(--error);
             border: 1px solid #fecaca;
-            padding: 0.75rem 1rem;
+            padding: 0.7rem 1rem;
             border-radius: 8px;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
             font-size: 0.9rem;
         }
         .hint {
             font-size: 0.8rem;
             color: var(--muted);
-            margin-top: -1rem;
-            margin-bottom: 1.4rem;
+            margin-top: -0.85rem;
+            margin-bottom: 1.2rem;
+        }
+        .divider {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin: 0.25rem 0;
         }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Transcript → DOCX</h1>
-        <p class="subtitle">Upload a .txt transcript and download a formatted Word document.</p>
+    <div class="container">
 
+        <!-- Flash messages -->
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
@@ -112,17 +126,41 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" enctype="multipart/form-data">
-            <label for="heading">Document Heading</label>
-            <input type="text" id="heading" name="heading"
-                   placeholder="e.g. Big Brother Transcript" value="Big Brother Transcript">
+        <!-- Convert to DOCX -->
+        <div class="card">
+            <h1>Transcript → DOCX</h1>
+            <p class="subtitle">Upload a single .txt transcript and download a formatted Word document.</p>
 
-            <label for="file">Transcript File (.txt)</label>
-            <input type="file" id="file" name="file" accept=".txt" required>
-            <p class="hint">Expected format: (0:07) dialogue text (0:15) more text …</p>
+            <form method="POST" action="/" enctype="multipart/form-data">
+                <label for="heading">Document Heading</label>
+                <input type="text" id="heading" name="heading"
+                       placeholder="e.g. Big Brother Transcript" value="Big Brother Transcript">
 
-            <button type="submit">Convert & Download DOCX</button>
-        </form>
+                <label for="file">Transcript File (.txt)</label>
+                <input type="file" id="file" name="file" accept=".txt" required>
+                <p class="hint">Expected format: (0:07) dialogue text (0:15) more text …</p>
+
+                <button type="submit">Convert & Download DOCX</button>
+            </form>
+        </div>
+
+        <!-- Merge two parts -->
+        <div class="card">
+            <h2>Merge Two Transcripts</h2>
+            <p class="subtitle">Upload Part 1 and Part 2. Timestamps in Part 2 will be shifted to continue from the end of Part 1. Output is a .txt file.</p>
+
+            <form method="POST" action="/merge" enctype="multipart/form-data">
+                <label for="part1">Part 1 (.txt)</label>
+                <input type="file" id="part1" name="part1" accept=".txt" required>
+
+                <label for="part2">Part 2 (.txt)</label>
+                <input type="file" id="part2" name="part2" accept=".txt" required>
+                <p class="hint">Part 2 timestamps will be automatically increased by the last timestamp of Part 1.</p>
+
+                <button type="submit">Merge & Download TXT</button>
+            </form>
+        </div>
+
     </div>
 </body>
 </html>
